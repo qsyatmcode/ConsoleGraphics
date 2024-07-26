@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="ConanVariables">
+    <Conanftxui_ftxui-screenRootFolder>C:/Users/Dimas/.conan2/p/b/ftxui2a5b3f7551786/p</Conanftxui_ftxui-screenRootFolder>
+    <Conanftxui_ftxui-screenBinaryDirectories></Conanftxui_ftxui-screenBinaryDirectories>
+    <Conanftxui_ftxui-screenCompilerFlags></Conanftxui_ftxui-screenCompilerFlags>
+    <Conanftxui_ftxui-screenLinkerFlags></Conanftxui_ftxui-screenLinkerFlags>
+    <Conanftxui_ftxui-screenPreprocessorDefinitions></Conanftxui_ftxui-screenPreprocessorDefinitions>
+    <Conanftxui_ftxui-screenIncludeDirectories>$(Conanftxui_ftxui-screenRootFolder)/include;</Conanftxui_ftxui-screenIncludeDirectories>
+    <Conanftxui_ftxui-screenResourceDirectories></Conanftxui_ftxui-screenResourceDirectories>
+    <Conanftxui_ftxui-screenLibraryDirectories>$(Conanftxui_ftxui-screenRootFolder)/lib;</Conanftxui_ftxui-screenLibraryDirectories>
+    <Conanftxui_ftxui-screenLibraries>ftxui-screen.lib;</Conanftxui_ftxui-screenLibraries>
+    <Conanftxui_ftxui-screenSystemLibs></Conanftxui_ftxui-screenSystemLibs>
+  </PropertyGroup>
+</Project>
