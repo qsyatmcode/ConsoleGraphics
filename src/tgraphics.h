@@ -7,6 +7,10 @@
 #include <vector>
 #include <utility> // for std::pair
 
+#include "curses.h"
+
+#define PDC_WIDE
+
 namespace TG
 {
 	// █
@@ -26,6 +30,16 @@ namespace TG
 		{
 			return sqrtf(x * x + y * y + z * z);
 		}
+
+		const Vector3& Normalize() const
+		{
+			float l = Length();
+			return {
+			x / l,
+			y / l,
+			z / l
+			};
+		}
 	};
 	struct Matrix4
 	{
@@ -44,17 +58,18 @@ namespace TG
 
 	const Vector3& MatVecM(const Vector3& vec, const Matrix4& mat);
 	const Vector3& CrossProduct(const Vector3& a, const Vector3& b);
-	const Vector3& Normalize(const Vector3& vec);
 	float DotProduct(const Vector3& a, const Vector3& b);
 
-	struct Graphics
+	class Graphics
 	{
+	public:
 		void SetCursorPosition(COORD pos);
 		void Clear();
 		void Draw(float elapsedTime);
 		void DrawLine(COORD startPoint, COORD endPoint);
+		void DrawTriangle(Triangle tri);
 
-		Graphics(COORD screenSize)
+		explicit Graphics(COORD screenSize)
 		{
 			SetConsoleCP(CP_UTF8);
 			SetConsoleOutputCP(CP_UTF8);
@@ -65,7 +80,7 @@ namespace TG
 			if (m_ConsoleInHandle == INVALID_HANDLE_VALUE)
 				throw std::exception("Invalid IN handle value: " + GetLastError()); // todo: It will need to be improved
 
-			EnableVirtualTerminalProcessing();
+			//EnableVirtualTerminalProcessing();
 
 			m_DefaultCfi.cbSize = sizeof(CONSOLE_FONT_INFOEX);
 			m_DefaultCsbi.cbSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
@@ -78,14 +93,25 @@ namespace TG
 			m_WindowBoundsSize = GetWindowBoundsSize();
 			m_DefaultConsoleScreenSize = GetConsoleScreenSize();
 
+
 			SetConsoleScreenSize(screenSize.X, screenSize.Y);
 			SetConsoleBuffSize(screenSize.X, screenSize.Y);
 			m_ScreenHeight = screenSize.Y;
 			m_ScreenWidth = screenSize.X;
+
+			initscr(); // curses
+			//raw();
+
+			int row, col;
+			getmaxyx(stdscr, row, col);
 		}
+
+		Graphics(const Graphics& other) = delete;
 
 		~Graphics()
 		{
+			endwin(); // curses
+
 			SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &m_DefaultCfi);
 			SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &m_DefaultCci);
 

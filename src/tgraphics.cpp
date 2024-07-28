@@ -30,19 +30,6 @@ namespace TG
 		};
 	}
 
-	const Vector3& Normalize(const Vector3& vec)
-	{
-		float l = vec.Length();
-		if (l <= 0)
-			return {0, 0, 0};
-
-		return {
-			vec.x / l,
-			vec.y / l,
-			vec.z / l
-		};
-	}
-
 	float DotProduct(const Vector3& a, const Vector3& b)
 	{
 		return a.x * b.x + a.y * b.y + a.z * b.z ;
@@ -50,12 +37,14 @@ namespace TG
 
 	void Graphics::SetCursorPosition(COORD pos)
 	{
-		std::wcout << L"\x1b[" << pos.Y << L";" << pos.X << L"H";
+		move(pos.Y, pos.X);
+		//std::wcout << L"\x1b[" << pos.Y << L";" << pos.X << L"H";
 	}
 
 	void Graphics::Clear()
 	{
-		std::wcout << L"\x1b[1;1H\x1b[2J";
+		clear();
+		//std::wcout << L"\x1b[1;1H\x1b[2J";
 	}
 
 	void Graphics::Draw(float elapsedTime)
@@ -125,8 +114,9 @@ namespace TG
 			}
 		};
 
-		//SetCursorPosition(COORD{ 0,0 });
-		wprintf(L"%f", elapsedTime);
+		SetCursorPosition(COORD{ 0,0 });
+		//wprintf(L"%f", elapsedTime);
+		printw("%f", elapsedTime);
 		for(auto tri : cube.tris) // draw cube mesh
 		{
 			Vector3 rotatedZ[3];
@@ -152,9 +142,9 @@ namespace TG
 			b.z = rotatedXZ[2].z - rotatedXZ[0].z;
 
 			Vector3 cp = CrossProduct(a, b);
-			Vector3 normCp = Normalize(cp);
+			Vector3 normCp = cp.Normalize();
 
-			if(normCp.z > 0.0f)
+			if(/*normCp.z > 0.0f*/ DotProduct(normCp, rotatedXZ[0]) > 0.0f) // see if less than 90 degrees
 			{
 				continue;
 			}
@@ -171,12 +161,20 @@ namespace TG
 			//SetCursorPosition({ static_cast<short>((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight)) });
 			//wprintf(L"%c", full_block_char);
 
-			DrawLine(COORD{ static_cast<short>((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight)) },
-				COORD{ static_cast<short>((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight)) });
-			DrawLine(COORD{ static_cast<short>((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight)) },
-				COORD{ static_cast<short>((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight)) });
-			DrawLine(COORD{ static_cast<short>((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight)) },
-				COORD{ static_cast<short>((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight)) });
+			DrawTriangle(Triangle{
+				{
+					proj[0],
+					proj[1],
+					proj[2]
+				}
+			});
+
+			//DrawLine(COORD{ static_cast<short>((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight)) },
+			//	COORD{ static_cast<short>((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight)) });
+			//DrawLine(COORD{ static_cast<short>((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight)) },
+			//	COORD{ static_cast<short>((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight)) });
+			//DrawLine(COORD{ static_cast<short>((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight)) },
+			//	COORD{ static_cast<short>((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight)) });
 
 			//SetCursorPosition({ static_cast<short>((proj.x + 1.0f) * (0.5f * m_ScreenWidth) ), static_cast<short>((proj.y + 1.0f) * (0.5f * m_ScreenHeight)) });
 			//wprintf(L"%c", full_block_char);
@@ -204,6 +202,7 @@ namespace TG
 		//DrawLine(COORD{ 10, 10 }, COORD{ 0, 10 });
 		//DrawLine(COORD{ 10, 10 }, COORD{ 3, 5 });
 
+		refresh();
 		Clear();
 	}
 
@@ -235,7 +234,9 @@ namespace TG
 			while (startPoint.Y != endPoint.Y)
 			{
 				SetCursorPosition(startPoint);
-				wprintf(L"%c", full_block_char);
+				//wprintf(L"%c", full_block_char);
+				printw("%c", '@');
+
 				if (ydir == YDirection::UP)
 					startPoint.Y++; // move Y down
 				else
@@ -256,7 +257,87 @@ namespace TG
 			while (startPoint.X != endPoint.X)
 			{
 				SetCursorPosition(startPoint);
-				wprintf(L"%c", full_block_char);
+				//wprintf(L"%c", full_block_char);
+				printw("%c", '@');
+
+				if (xdir == XDirection::RIGHT)
+					startPoint.X++; // move X right
+				else
+					startPoint.X--; // move X left
+				error += std::abs(m);
+				if (error > 0.5f && error < 500.0f)
+				{
+					if (ydir == YDirection::UP)
+						startPoint.Y++; // move Y down
+					else
+						startPoint.Y--; // move Y up
+					error -= 1.0f;
+					//error = 0.0f;
+				}
+			}
+		}
+	}
+
+	void Graphics::DrawTriangle(Triangle tri) // so bad efficient
+	{
+		COORD startPoint{static_cast<short>((tri.verts[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((tri.verts[0].y + 1.0f) * (0.5f * m_ScreenHeight)) };
+		COORD endPoint{ static_cast<short>((tri.verts[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((tri.verts[1].y + 1.0f) * (0.5f * m_ScreenHeight)) };
+		COORD middlePoint{ static_cast<short>((tri.verts[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((tri.verts[2].y + 1.0f) * (0.5f * m_ScreenHeight)) };
+
+		enum class YDirection { UP, DOWN } ydir{ YDirection::UP };
+		enum class XDirection { RIGHT, LEFT } xdir{ XDirection::RIGHT };
+
+		bool invert{ false };
+		float error{ 0.0f };
+		short dx = endPoint.X - startPoint.X;
+		if (dx < 0) {
+			dx = -dx;
+			xdir = XDirection::LEFT;
+		}
+		short dy = endPoint.Y - startPoint.Y;
+		if (dy < 0) {
+			dy = -dy;
+			ydir = YDirection::DOWN;
+		}
+		// dx > dy => line's up => one pixel per column
+		// dx < dy => line's down => one pixel per row
+		if (dx < dy)
+			invert = true;
+		const float m = static_cast<float>(dy) / static_cast<float>(dx); // slope.  how much change in Y, for 1 change in X
+
+		if (dx <= dy) { // invert
+			const float m = static_cast<float>(dx) / static_cast<float>(dy); // slope.  how much change in Y, for 1 change in X
+			while (startPoint.Y != endPoint.Y)
+			{
+				SetCursorPosition(startPoint);
+				//wprintf(L"%c", full_block_char);
+				printw("%c", '@');
+				DrawLine(startPoint, middlePoint);
+
+				if (ydir == YDirection::UP)
+					startPoint.Y++; // move Y down
+				else
+					startPoint.Y--; // move X up
+				error += std::abs(m);
+				if (error > 0.5f && error < 500.0f)
+				{
+					if (xdir == XDirection::RIGHT)
+						startPoint.X++; // move X right
+					else
+						startPoint.X--; // move X left
+					error -= 1.0f;
+					//error = 0.0f;
+				}
+			}
+		}
+		else { // not invert
+			while (startPoint.X != endPoint.X)
+			{
+				SetCursorPosition(startPoint);
+				//wprintf(L"%c", full_block_char);
+				printw("%c", '@');
+				DrawLine(startPoint, middlePoint);
+
 				if (xdir == XDirection::RIGHT)
 					startPoint.X++; // move X right
 				else

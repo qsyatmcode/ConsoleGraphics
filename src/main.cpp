@@ -15,7 +15,9 @@ int main()
 
 void Run()
 {
-	TG::Graphics g{ COORD{80, 40} };
+	auto fullSize = GetLargestConsoleWindowSize(GetStdHandle(STD_OUTPUT_HANDLE));
+
+	TG::Graphics g{ COORD{180, 50} };
 
 	typedef std::chrono::high_resolution_clock clock;
 	std::chrono::steady_clock::time_point begin{};
@@ -24,13 +26,16 @@ void Run()
 	std::chrono::duration<float> elapsed{};
 
 	//g.DrawLine(COORD{ 10, 10 }, COORD{ 12, 0 });
-	//g.DrawLine(COORD{ 10, 10 }, COORD{ 17, 5 });
-	//g.DrawLine(COORD{ 10, 10 }, COORD{ 20, 10 });
-	//g.DrawLine(COORD{ 10, 10 }, COORD{ 17, 15 });
-	//g.DrawLine(COORD{ 10, 10 }, COORD{ 10, 20 });
-	//g.DrawLine(COORD{ 10, 10 }, COORD{ 3, 15 });
-	//g.DrawLine(COORD{ 10, 10 }, COORD{ 0, 10 });
-	//g.DrawLine(COORD{ 10, 10 }, COORD{ 3, 5 });
+
+	//g.DrawTriangle(TG::Triangle{
+	//	{
+	//		TG::Vector3{5, 5},
+	//		TG::Vector3{20, 20},
+	//		TG::Vector3{50, 7},
+	//	}
+	//});
+
+	//refresh();
 
 	while (true)
 	{
