@@ -22,9 +22,32 @@ namespace TG
 	// ░
 	constexpr wchar_t light_shade{ L'\u2591' };
 
+	struct Point2
+	{
+		int x{}, y{};
+
+		constexpr Point2() = default;
+
+		const Point2& operator-(const Point2& rhs) const
+		{
+			return Point2{ x - rhs.y, y - rhs.y};
+		}
+		const Point2& operator+(const Point2& rhs) const
+		{
+			return Point2{ x + rhs.y, y + rhs.y};
+		}
+
+		const Point2& operator*(int rhs) const
+		{
+			return Point2{ x * rhs, y * rhs};
+		}
+	};
+
 	struct Vector3
 	{
 		float x{}, y{}, z{};
+
+		constexpr Vector3() = default;
 
 		float Length() const
 		{
@@ -40,20 +63,40 @@ namespace TG
 			z / l
 			};
 		}
+
+		const Vector3& operator-(const Vector3& rhs) const
+		{
+			return Vector3{ x - rhs.y, y - rhs.y, z - rhs.z };
+		}
+		const Vector3& operator+(const Vector3& rhs) const
+		{
+			return Vector3{ x + rhs.y, y + rhs.y, z + rhs.z };
+		}
+
+		const Vector3& operator*(float rhs) const
+		{
+			return Vector3{ x * rhs, y * rhs, z * rhs };
+		}
 	};
 	struct Matrix4
 	{
-		float m[4][4];
+		float m[4][4]{};
+
+		constexpr Matrix4() = default;
 	};
 
 	struct Triangle
 	{
-		Vector3 verts[3];
+		Vector3 verts[3]{};
+
+		constexpr Triangle() = default;
 	};
 
 	struct Mesh
 	{
 		std::vector<Triangle> tris{};
+
+		constexpr Mesh() = default;
 	};
 
 	const Vector3& MatVecM(const Vector3& vec, const Matrix4& mat);
@@ -66,8 +109,9 @@ namespace TG
 		void SetCursorPosition(COORD pos);
 		void Clear();
 		void Draw(float elapsedTime);
-		void DrawLine(COORD startPoint, COORD endPoint);
-		void DrawTriangle(Triangle tri);
+		void DrawLine(COORD startPoint, COORD endPoint, char fillChar = '*');
+		void DrawTriangle(Triangle tri, char fillChar = '@');
+		char PixelIllumination(const Vector3& lightDir, const Vector3& normal);
 
 		explicit Graphics(COORD screenSize)
 		{

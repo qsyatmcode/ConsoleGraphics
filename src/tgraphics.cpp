@@ -58,6 +58,8 @@ namespace TG
 		static const float zNear{ 0.1f };
 		static const float zFar{ 1000.0f };
 
+		constexpr static Vector3 lightDirection{0, 0, -1};
+
 		// rotation matrix for 3d space - https://w.wiki/AjaZ
 		Matrix4 rotXMat{
 			{
@@ -154,20 +156,15 @@ namespace TG
 			proj[1] = MatVecM(rotatedXZ[1], projMatrix);
 			proj[2] = MatVecM(rotatedXZ[2], projMatrix);
 
-			//SetCursorPosition({ static_cast<short>((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight))});
-			//wprintf(L"%c", full_block_char);
-			//SetCursorPosition({ static_cast<short>((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight)) });
-			//wprintf(L"%c", full_block_char);
-			//SetCursorPosition({ static_cast<short>((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight)) });
-			//wprintf(L"%c", full_block_char);
-
 			DrawTriangle(Triangle{
 				{
-					proj[0],
-					proj[1],
-					proj[2]
+					Vector3{((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), ((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight))},
+					Vector3{((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), ((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight))},
+					Vector3{((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), ((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight))},
 				}
-			});
+			}, PixelIllumination(lightDirection, normCp));
+
+			//COORD{ static_cast<short>((x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((y + 1.0f) * (0.5f * m_ScreenHeight)) }
 
 			//DrawLine(COORD{ static_cast<short>((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight)) },
 			//	COORD{ static_cast<short>((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight)) });
@@ -206,7 +203,7 @@ namespace TG
 		Clear();
 	}
 
-	void Graphics::DrawLine(COORD startPoint, COORD endPoint) // Bresenham's line algorithm
+	void Graphics::DrawLine(COORD startPoint, COORD endPoint, char fillChar) // Bresenham's line algorithm
 	{
 		enum class YDirection { UP, DOWN } ydir{YDirection::UP};
 		enum class XDirection{ RIGHT, LEFT } xdir{XDirection::RIGHT};
@@ -234,8 +231,7 @@ namespace TG
 			while (startPoint.Y != endPoint.Y)
 			{
 				SetCursorPosition(startPoint);
-				//wprintf(L"%c", full_block_char);
-				printw("%c", '@');
+				printw("%c", fillChar);
 
 				if (ydir == YDirection::UP)
 					startPoint.Y++; // move Y down
@@ -249,7 +245,6 @@ namespace TG
 					else
 						startPoint.X--; // move X left
 					error -= 1.0f;
-					//error = 0.0f;
 				}
 			}
 		}
@@ -257,8 +252,7 @@ namespace TG
 			while (startPoint.X != endPoint.X)
 			{
 				SetCursorPosition(startPoint);
-				//wprintf(L"%c", full_block_char);
-				printw("%c", '@');
+				printw("%c", fillChar);
 
 				if (xdir == XDirection::RIGHT)
 					startPoint.X++; // move X right
@@ -272,88 +266,89 @@ namespace TG
 					else
 						startPoint.Y--; // move Y up
 					error -= 1.0f;
-					//error = 0.0f;
 				}
 			}
 		}
 	}
 
-	void Graphics::DrawTriangle(Triangle tri) // so bad efficient
+	const Vector3& interpolate(const Point2& p1, const Point2& p2, float factor) {
+		return Vector3{(p1.x + (p2.x - p1.x) * factor )};
+	}
+
+	void Graphics::DrawTriangle(Triangle tri, char fillChar)
 	{
-		COORD startPoint{static_cast<short>((tri.verts[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((tri.verts[0].y + 1.0f) * (0.5f * m_ScreenHeight)) };
-		COORD endPoint{ static_cast<short>((tri.verts[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((tri.verts[1].y + 1.0f) * (0.5f * m_ScreenHeight)) };
-		COORD middlePoint{ static_cast<short>((tri.verts[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((tri.verts[2].y + 1.0f) * (0.5f * m_ScreenHeight)) };
+		auto v3 = Point2{ static_cast<int>(tri.verts[2].x), static_cast<int>(tri.verts[2].y) };
+		auto v2 = Point2{ static_cast<int>(tri.verts[1].x), static_cast<int>(tri.verts[1].y) };
+		auto v1 = Point2{ static_cast<int>(tri.verts[0].x), static_cast<int>(tri.verts[0].y) };
 
-		enum class YDirection { UP, DOWN } ydir{ YDirection::UP };
-		enum class XDirection { RIGHT, LEFT } xdir{ XDirection::RIGHT };
 
-		bool invert{ false };
-		float error{ 0.0f };
-		short dx = endPoint.X - startPoint.X;
-		if (dx < 0) {
-			dx = -dx;
-			xdir = XDirection::LEFT;
-		}
-		short dy = endPoint.Y - startPoint.Y;
-		if (dy < 0) {
-			dy = -dy;
-			ydir = YDirection::DOWN;
-		}
-		// dx > dy => line's up => one pixel per column
-		// dx < dy => line's down => one pixel per row
-		if (dx < dy)
-			invert = true;
-		const float m = static_cast<float>(dy) / static_cast<float>(dx); // slope.  how much change in Y, for 1 change in X
+		if (v1.y > v2.y) std::swap(v1, v2);
+		if (v1.y > v3.y) std::swap(v1, v3);
+		if (v2.y > v3.y) std::swap(v2, v3);
 
-		if (dx <= dy) { // invert
-			const float m = static_cast<float>(dx) / static_cast<float>(dy); // slope.  how much change in Y, for 1 change in X
-			while (startPoint.Y != endPoint.Y)
-			{
-				SetCursorPosition(startPoint);
-				//wprintf(L"%c", full_block_char);
-				printw("%c", '@');
-				DrawLine(startPoint, middlePoint);
 
-				if (ydir == YDirection::UP)
-					startPoint.Y++; // move Y down
-				else
-					startPoint.Y--; // move X up
-				error += std::abs(m);
-				if (error > 0.5f && error < 500.0f)
-				{
-					if (xdir == XDirection::RIGHT)
-						startPoint.X++; // move X right
-					else
-						startPoint.X--; // move X left
-					error -= 1.0f;
-					//error = 0.0f;
+		// Вычисление общей высоты треугольника
+		float total_height = v3.y - v1.y;
+
+		if (v2.y != v1.y) {
+			// Растеризация нижней половины треугольника
+			for (int y = v1.y; y <= v2.y; y++) {
+				float segment_height = v2.y - v1.y + 1;
+				if (total_height == 0 || segment_height == 0)
+					continue;
+				float alpha = (total_height != 0) ? (y - v1.y) / total_height : 0;
+				float beta = (segment_height != 0) ? (y - v1.y) / segment_height : 0;
+				Vector3 A = interpolate(v1, v3, alpha);
+				Vector3 B = interpolate(v1, v2, beta);
+
+				if (A.x > B.x) std::swap(A, B);
+
+				for (int x =  A.x; x <= B.x; x++) {
+					SetCursorPosition(COORD{ static_cast<short>(x), static_cast<short>(y) });
+					printw("%c", fillChar);
 				}
 			}
 		}
-		else { // not invert
-			while (startPoint.X != endPoint.X)
-			{
-				SetCursorPosition(startPoint);
-				//wprintf(L"%c", full_block_char);
-				printw("%c", '@');
-				DrawLine(startPoint, middlePoint);
-
-				if (xdir == XDirection::RIGHT)
-					startPoint.X++; // move X right
-				else
-					startPoint.X--; // move X left
-				error += std::abs(m);
-				if (error > 0.5f && error < 500.0f)
-				{
-					if (ydir == YDirection::UP)
-						startPoint.Y++; // move Y down
-					else
-						startPoint.Y--; // move Y up
-					error -= 1.0f;
-					//error = 0.0f;
-				}
+		if (v2.y == v3.y)
+			return;
+		// Растеризация верхней половины треугольника
+		for (int y = v2.y; y <= v3.y; y++) {
+			float segment_height = v3.y - v2.y + 1;
+			if (total_height == 0 || segment_height == 0)
+				continue;
+			float alpha = (total_height != 0) ? (y - v1.y) / total_height : 0;
+			float beta = (segment_height != 0) ? (y - v2.y) / segment_height : 0;
+			Vector3 A = interpolate(v1, v3, alpha);
+			Vector3 B = interpolate(v2, v3, beta);
+			if (A.x > B.x) std::swap(A, B);
+			for (int x = A.x; x <= B.x; x++) {
+				SetCursorPosition(COORD{ static_cast<short>(x), static_cast<short>(y) });
+				printw("%c", fillChar);
 			}
 		}
+	}
+
+	char Graphics::PixelIllumination(const Vector3& lightDir, const Vector3& normal)
+	{
+		float dp = DotProduct(normal, lightDir);
+		if(dp > 0.80f)
+		{
+			return '@';
+		}else if (dp > 0.7f)
+		{
+			return '#';
+		}else if (dp > 0.60f)
+		{
+			return 'Z';
+		}else if(dp > 0.30f) 
+		{
+			return 'u';
+		}else if(dp > 0.0f)
+		{
+			return '+';
+		}
+
+		return ' ';
 	}
 
 	std::pair<unsigned, unsigned> Graphics::GetWindowBoundsSize() const
