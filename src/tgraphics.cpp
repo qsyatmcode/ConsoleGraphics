@@ -1,25 +1,46 @@
 #include "tgraphics.h"
 
+#include <algorithm>
 #include <chrono>
+#include <string>
 
 namespace TG
 {
 	constexpr float PI = 3.141592f;
 
-	const Vector3& MatVecM(const Vector3& vec, const Matrix4& mat)
+	Vector3 operator*(const Matrix4& mat, const Vector3& vec)
 	{
 		float x = vec.x * mat.m[0][0] + vec.y * mat.m[1][0] + vec.z * mat.m[2][0] + mat.m[3][0];
 		float y = vec.x * mat.m[0][1] + vec.y * mat.m[1][1] + vec.z * mat.m[2][1] + mat.m[3][1];
 		float z = vec.x * mat.m[0][2] + vec.y * mat.m[1][2] + vec.z * mat.m[2][2] + mat.m[3][2];
 
-		if(float w = vec.x * mat.m[0][3] + vec.y * mat.m[1][3] + vec.z * mat.m[2][3] + mat.m[3][3]; w != 0.0f)
+		if (float w = vec.x * mat.m[0][3] + vec.y * mat.m[1][3] + vec.z * mat.m[2][3] + mat.m[3][3]; w != 0.0f)
 		{
 			x /= w;
 			y /= w;
 			z /= w;
 			return { x, y, z };
 		}
+
+		return { 0, 0, 0 };
 	}
+
+	Vector3 operator*(const Vector3& vec, const Matrix4& mat) { return mat * vec; }
+
+	//const Vector3& MatVecM(const Vector3& vec, const Matrix4& mat)
+	//{
+	//	float x = vec.x * mat.m[0][0] + vec.y * mat.m[1][0] + vec.z * mat.m[2][0] + mat.m[3][0];
+	//	float y = vec.x * mat.m[0][1] + vec.y * mat.m[1][1] + vec.z * mat.m[2][1] + mat.m[3][1];
+	//	float z = vec.x * mat.m[0][2] + vec.y * mat.m[1][2] + vec.z * mat.m[2][2] + mat.m[3][2];
+	//
+	//	if(float w = vec.x * mat.m[0][3] + vec.y * mat.m[1][3] + vec.z * mat.m[2][3] + mat.m[3][3]; w != 0.0f)
+	//	{
+	//		x /= w;
+	//		y /= w;
+	//		z /= w;
+	//		return { x, y, z };
+	//	}
+	//}
 
 	const Vector3& CrossProduct(const Vector3& a, const Vector3& b)
 	{
@@ -49,7 +70,7 @@ namespace TG
 
 	void Graphics::Draw(float elapsedTime)
 	{
-		static float zOffset = 3.0f;
+		static float zOffset = 20.0f;
 		static float rotAngle{ 0.0f };
 		rotAngle += 1.0f * elapsedTime;
 		static const float fov{ 80.0f };
@@ -88,48 +109,28 @@ namespace TG
 			}
 		};
 
-		static Mesh cube{
-			{
-				// SOUTH
-				{ 0.0f, 0.0f, 0.0f,    0.0f, 1.0f, 0.0f,    1.0f, 1.0f, 0.0f },
-				{ 0.0f, 0.0f, 0.0f,    1.0f, 1.0f, 0.0f,    1.0f, 0.0f, 0.0f },
-
-				// EAST                                                      
-				{ 1.0f, 0.0f, 0.0f,    1.0f, 1.0f, 0.0f,    1.0f, 1.0f, 1.0f },
-				{ 1.0f, 0.0f, 0.0f,    1.0f, 1.0f, 1.0f,    1.0f, 0.0f, 1.0f },
-
-				// NORTH                                                     
-				{ 1.0f, 0.0f, 1.0f,    1.0f, 1.0f, 1.0f,    0.0f, 1.0f, 1.0f },
-				{ 1.0f, 0.0f, 1.0f,    0.0f, 1.0f, 1.0f,    0.0f, 0.0f, 1.0f },
-
-				// WEST                                                      
-				{ 0.0f, 0.0f, 1.0f,    0.0f, 1.0f, 1.0f,    0.0f, 1.0f, 0.0f },
-				{ 0.0f, 0.0f, 1.0f,    0.0f, 1.0f, 0.0f,    0.0f, 0.0f, 0.0f },
-
-				// TOP                                                       
-				{ 0.0f, 1.0f, 0.0f,    0.0f, 1.0f, 1.0f,    1.0f, 1.0f, 1.0f },
-				{ 0.0f, 1.0f, 0.0f,    1.0f, 1.0f, 1.0f,    1.0f, 1.0f, 0.0f },
-
-				// BOTTOM                                                    
-				{ 1.0f, 0.0f, 1.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f, 0.0f },
-				{ 1.0f, 0.0f, 1.0f,    0.0f, 0.0f, 0.0f,    1.0f, 0.0f, 0.0f },
-			}
-		};
-
 		SetCursorPosition(COORD{ 0,0 });
-		//wprintf(L"%f", elapsedTime);
 		printw("%f", elapsedTime);
-		for(auto tri : cube.tris) // draw cube mesh
+
+		std::vector<Triangle> triToRaster{};
+
+		for(auto tri : Model.Tris) // draw Model mesh
 		{
 			Vector3 rotatedZ[3];
-			rotatedZ[0] = MatVecM(tri.verts[0], rotZMat);
-			rotatedZ[1] = MatVecM(tri.verts[1], rotZMat);
-			rotatedZ[2] = MatVecM(tri.verts[2], rotZMat);
+			//rotatedZ[0] = MatVecM(tri.verts[0], rotZMat);
+			//rotatedZ[1] = MatVecM(tri.verts[1], rotZMat);
+			//rotatedZ[2] = MatVecM(tri.verts[2], rotZMat);
+			rotatedZ[0] = tri.verts[0] * rotZMat;
+			rotatedZ[1] = tri.verts[1] * rotZMat;
+			rotatedZ[2] = tri.verts[2] * rotZMat;
 
 			Vector3 rotatedXZ[3];
-			rotatedXZ[0] = MatVecM(rotatedZ[0], rotXMat);
-			rotatedXZ[1] = MatVecM(rotatedZ[1], rotXMat);
-			rotatedXZ[2] = MatVecM(rotatedZ[2], rotXMat);
+			//rotatedXZ[0] = MatVecM(rotatedZ[0], rotXMat);
+			//rotatedXZ[1] = MatVecM(rotatedZ[1], rotXMat);
+			//rotatedXZ[2] = MatVecM(rotatedZ[2], rotXMat);
+			rotatedXZ[0] = rotatedZ[0] * rotXMat;
+			rotatedXZ[1] = rotatedZ[1] * rotXMat;
+			rotatedXZ[2] = rotatedZ[2] * rotXMat;
 			
 			rotatedXZ[0].z += zOffset;
 			rotatedXZ[1].z += zOffset;
@@ -146,64 +147,56 @@ namespace TG
 			Vector3 cp = CrossProduct(a, b);
 			Vector3 normCp = cp.Normalize();
 
-			if(/*normCp.z > 0.0f*/ DotProduct(normCp, rotatedXZ[0]) > 0.0f) // see if less than 90 degrees
+			if(DotProduct(normCp, rotatedXZ[0]) > 0.0f) // see if less than 90 degrees
 			{
 				continue;
 			}
 
 			Vector3 proj[3];
-			proj[0] = MatVecM(rotatedXZ[0], projMatrix);
-			proj[1] = MatVecM(rotatedXZ[1], projMatrix);
-			proj[2] = MatVecM(rotatedXZ[2], projMatrix);
+			//proj[0] = MatVecM(rotatedXZ[0], projMatrix);
+			//proj[1] = MatVecM(rotatedXZ[1], projMatrix);
+			//proj[2] = MatVecM(rotatedXZ[2], projMatrix);
+			proj[0] = rotatedXZ[0] * projMatrix;
+			proj[1] = rotatedXZ[1] * projMatrix;
+			proj[2] = rotatedXZ[2] * projMatrix;
 
-			DrawTriangle(Triangle{
+			proj[0].x = (proj[0].x + 0.6f) * (0.5f * m_ScreenWidth);
+			proj[0].y = (proj[0].y + 1.0f) * (0.5f * m_ScreenHeight);
+			proj[1].x = (proj[1].x + 0.6f) * (0.5f * m_ScreenWidth);
+			proj[1].y = (proj[1].y + 1.0f) * (0.5f * m_ScreenHeight);
+			proj[2].x = (proj[2].x + 0.6f) * (0.5f * m_ScreenWidth);
+			proj[2].y = (proj[2].y + 1.0f) * (0.5f * m_ScreenHeight);
+
+			Triangle toRaster{
 				{
-					Vector3{((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), ((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight))},
-					Vector3{((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), ((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight))},
-					Vector3{((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), ((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight))},
+					{proj[0].x, proj[0].y, proj[0].z},
+					{proj[1].x, proj[1].y, proj[1].z},
+					{proj[2].x, proj[2].y, proj[2].z},
 				}
-			}, PixelIllumination(lightDirection, normCp));
+			};
 
-			//COORD{ static_cast<short>((x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((y + 1.0f) * (0.5f * m_ScreenHeight)) }
+			toRaster.filler = PixelIllumination(lightDirection, normCp);
 
-			//DrawLine(COORD{ static_cast<short>((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight)) },
-			//	COORD{ static_cast<short>((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight)) });
-			//DrawLine(COORD{ static_cast<short>((proj[1].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[1].y + 1.0f) * (0.5f * m_ScreenHeight)) },
-			//	COORD{ static_cast<short>((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight)) });
-			//DrawLine(COORD{ static_cast<short>((proj[2].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[2].y + 1.0f) * (0.5f * m_ScreenHeight)) },
-			//	COORD{ static_cast<short>((proj[0].x + 1.0f) * (0.5f * m_ScreenWidth)), static_cast<short>((proj[0].y + 1.0f) * (0.5f * m_ScreenHeight)) });
-
-			//SetCursorPosition({ static_cast<short>((proj.x + 1.0f) * (0.5f * m_ScreenWidth) ), static_cast<short>((proj.y + 1.0f) * (0.5f * m_ScreenHeight)) });
-			//wprintf(L"%c", full_block_char);
-
-			//for(auto vert : tri.verts )
-			//{
-			//	Vector3 rotatedZ = MatVecM(vert, rotZMat);
-			//	Vector3 rotatedXZ = MatVecM(rotatedZ, rotXMat);
-			//
-			//	rotatedXZ.z += zOffset;
-			//
-			//	Vector3 proj = MatVecM(rotatedXZ, projMatrix); // rotate
-			//	//Vector3 proj = MatVecM(vert, projMatrix);
-			//	SetCursorPosition({ static_cast<short>((proj.x + 1.0f) * (0.5f * m_ScreenWidth) ), static_cast<short>((proj.y + 1.0f) * (0.5f * m_ScreenHeight)) });
-			//	wprintf(L"%c", full_block_char);
-			//}
+			triToRaster.push_back(toRaster);
 		}
 
-		//DrawLine(COORD{ 10, 10 }, COORD{ 10, 0 });
-		//DrawLine(COORD{ 10, 10 }, COORD{ 17, 5 });
-		//DrawLine(COORD{ 10, 10 }, COORD{ 20, 10 });
-		//DrawLine(COORD{ 10, 10 }, COORD{ 17, 15 });
-		//DrawLine(COORD{ 10, 10 }, COORD{ 10, 20 });
-		//DrawLine(COORD{ 10, 10 }, COORD{ 3, 15 });
-		//DrawLine(COORD{ 10, 10 }, COORD{ 0, 10 });
-		//DrawLine(COORD{ 10, 10 }, COORD{ 3, 5 });
+		std::sort(triToRaster.begin(), triToRaster.end(), [](Triangle& t1, Triangle& t2)
+		{
+				float z1 = (t1.verts[0].z + t1.verts[1].z + t1.verts[2].z) / 3.0f;
+				float z2 = (t2.verts[0].z + t2.verts[1].z + t2.verts[2].z) / 3.0f;
+				return z1 > z2;
+		});
+
+		for(auto tri : triToRaster)
+		{
+			DrawTriangle(tri);
+		}
 
 		refresh();
 		Clear();
 	}
 
-	void Graphics::DrawLine(COORD startPoint, COORD endPoint, char fillChar) // Bresenham's line algorithm
+	void Graphics::DrawLine(COORD startPoint, COORD endPoint, const char fillChar[]) // Bresenham's line algorithm
 	{
 		enum class YDirection { UP, DOWN } ydir{YDirection::UP};
 		enum class XDirection{ RIGHT, LEFT } xdir{XDirection::RIGHT};
@@ -231,7 +224,7 @@ namespace TG
 			while (startPoint.Y != endPoint.Y)
 			{
 				SetCursorPosition(startPoint);
-				printw("%c", fillChar);
+				printw("%s", fillChar);
 
 				if (ydir == YDirection::UP)
 					startPoint.Y++; // move Y down
@@ -252,7 +245,7 @@ namespace TG
 			while (startPoint.X != endPoint.X)
 			{
 				SetCursorPosition(startPoint);
-				printw("%c", fillChar);
+				printw("%s", fillChar);
 
 				if (xdir == XDirection::RIGHT)
 					startPoint.X++; // move X right
@@ -275,7 +268,7 @@ namespace TG
 		return Vector3{(p1.x + (p2.x - p1.x) * factor )};
 	}
 
-	void Graphics::DrawTriangle(Triangle tri, char fillChar)
+	void Graphics::DrawTriangle(Triangle tri)
 	{
 		auto v3 = Point2{ static_cast<int>(tri.verts[2].x), static_cast<int>(tri.verts[2].y) };
 		auto v2 = Point2{ static_cast<int>(tri.verts[1].x), static_cast<int>(tri.verts[1].y) };
@@ -305,7 +298,7 @@ namespace TG
 
 				for (int x =  A.x; x <= B.x; x++) {
 					SetCursorPosition(COORD{ static_cast<short>(x), static_cast<short>(y) });
-					printw("%c", fillChar);
+					printw("%s", tri.filler);
 				}
 			}
 		}
@@ -323,32 +316,29 @@ namespace TG
 			if (A.x > B.x) std::swap(A, B);
 			for (int x = A.x; x <= B.x; x++) {
 				SetCursorPosition(COORD{ static_cast<short>(x), static_cast<short>(y) });
-				printw("%c", fillChar);
+				printw("%s", tri.filler);
 			}
 		}
 	}
 
-	char Graphics::PixelIllumination(const Vector3& lightDir, const Vector3& normal)
+	const char* Graphics::PixelIllumination(const Vector3& lightDir, const Vector3& normal)
 	{
 		float dp = DotProduct(normal, lightDir);
-		if(dp > 0.80f)
+		if(dp > 0.75f)
 		{
-			return '@';
-		}else if (dp > 0.7f)
+			return "█";
+		}else if (dp > 0.5f)
 		{
-			return '#';
-		}else if (dp > 0.60f)
+			return "▓";
+		}else if (dp > 0.25f)
 		{
-			return 'Z';
-		}else if(dp > 0.30f) 
+			return "▒";
+		}else if(dp > 0.0f) 
 		{
-			return 'u';
-		}else if(dp > 0.0f)
-		{
-			return '+';
+			return "░";
 		}
 
-		return ' ';
+		return " ";
 	}
 
 	std::pair<unsigned, unsigned> Graphics::GetWindowBoundsSize() const
@@ -430,30 +420,5 @@ namespace TG
 		{
 			std::cerr << "Console screen size reset is failed: " << GetLastError() << std::endl;
 		}
-	}
-
-	void Graphics::EnableVirtualTerminalProcessing() const
-	{
-		DWORD defaultOutMode {0};
-		if (!GetConsoleMode(m_ConsoleOutHandle, &defaultOutMode))
-			throw std::exception("Error in EnableVirtualTerminalProcessing (getting OUT CM): " + GetLastError());
-
-		DWORD defaultInMode {0};
-		if (!GetConsoleMode(m_ConsoleOutHandle, &defaultInMode))
-			throw std::exception("Error in EnableVirtualTerminalProcessing (getting IN CM): " + GetLastError());
-
-		DWORD newOutMode = defaultOutMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
-		DWORD newInMode = defaultInMode | ENABLE_VIRTUAL_TERMINAL_INPUT;
-
-		if(!SetConsoleMode(m_ConsoleOutHandle, newOutMode))
-		{
-			newOutMode = defaultOutMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-
-			if (!SetConsoleMode(m_ConsoleOutHandle, newOutMode))
-				throw std::exception("Error in EnableVirtualTerminalProcessing (setting OUT CM): " + GetLastError());
-		}
-
-		if (!SetConsoleMode(m_ConsoleInHandle, newInMode))
-			throw std::exception("Error in EnableVirtualTerminalProcessing (setting IN CM): " + GetLastError());
 	}
 }

@@ -2,6 +2,8 @@
 
 #include <Windows.h>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <io.h> // for _setmode()
 #include <fcntl.h>
 #include <vector>
@@ -9,7 +11,8 @@
 
 #include "curses.h"
 
-#define PDC_WIDE
+//#define NEW_OBJ // Load new quad model or old poly
+#undef  NEW_OBJ
 
 namespace TG
 {
@@ -43,6 +46,7 @@ namespace TG
 		}
 	};
 
+	struct Matrix4; // for friend operator+
 	struct Vector3
 	{
 		float x{}, y{}, z{};
@@ -64,42 +68,120 @@ namespace TG
 			};
 		}
 
-		const Vector3& operator-(const Vector3& rhs) const
+		Vector3 operator-(const Vector3& rhs) const
 		{
 			return Vector3{ x - rhs.y, y - rhs.y, z - rhs.z };
 		}
-		const Vector3& operator+(const Vector3& rhs) const
+		Vector3 operator+(const Vector3& rhs) const
 		{
 			return Vector3{ x + rhs.y, y + rhs.y, z + rhs.z };
 		}
 
-		const Vector3& operator*(float rhs) const
+		Vector3 operator*(float rhs) const
 		{
 			return Vector3{ x * rhs, y * rhs, z * rhs };
 		}
+
+		friend Vector3 operator*(const Matrix4& mat, const Vector3& vec);
+		friend Vector3 operator*(const Vector3& vec, const Matrix4& mat);
 	};
 	struct Matrix4
 	{
 		float m[4][4]{};
 
-		constexpr Matrix4() = default;
+		friend Vector3 operator*(const Matrix4& mat, const Vector3& vec);
+		friend Vector3 operator*(const Vector3& vec, const Matrix4& mat);
 	};
 
 	struct Triangle
 	{
 		Vector3 verts[3]{};
 
-		constexpr Triangle() = default;
+		const char* filler{ "?" };
 	};
 
-	struct Mesh
+	class Mesh
 	{
-		std::vector<Triangle> tris{};
+	public:
+		enum ReadMode
+		{
+			RM_OLD,
+			RM_NEW,
+			RM_ERROR
+		} ModelReadMode;
+
+		std::vector<Triangle> Tris{};
 
 		constexpr Mesh() = default;
+
+		explicit Mesh(const char* fileName, const char* mode = "old")
+		{
+			if(strcmp(mode, "old") == 0)
+			{
+				ModelReadMode = RM_OLD;
+			}else if(strcmp(mode, "new") == 0)
+			{
+				ModelReadMode = RM_NEW;
+			}else
+			{
+				ModelReadMode = RM_ERROR;
+			}
+
+			std::vector<Vector3> verts{};
+
+			std::ifstream file(fileName);
+			if (!file)
+			{
+				throw std::exception("File is not open");
+			}
+
+			for (std::string line; std::getline(file, line);)
+			{
+				std::stringstream s;
+				s << line;
+
+				//line.replace()
+
+				char junk{ };
+				if (line[0] == 'v' && line[1] == ' ') // Vert
+				{
+					Vector3 v{};
+					s >> junk >> v.x >> v.y >> v.z;
+					verts.push_back(v);
+				}
+				if (line[0] == 'f') // face
+				{
+//#ifdef NEW_OBJ
+					if (ModelReadMode == RM_NEW) {
+						int ti[4]{}; // vert indexes (quad)
+						int index{ 0 };
+						std::string token{};
+						s >> token; // skip 'f'
+						while (s >> token)
+						{
+							size_t slashPos = token.find('/');
+							if (slashPos != std::string::npos) {
+								std::string numberStr = token.substr(0, slashPos);
+								ti[index] = std::stoi(numberStr);
+								index++;
+							}
+						}
+						Tris.emplace_back(Triangle{ verts[ti[0] - 1], verts[ti[2] - 1], verts[ti[3] - 1] }); // first triangle
+						Tris.emplace_back(Triangle{ verts[ti[0] - 1], verts[ti[1] - 1], verts[ti[2] - 1] }); // second triangle
+					}
+					else if (ModelReadMode == RM_OLD) {
+						//#else
+						int ti[3]{};
+						char junk{};
+						s >> junk >> ti[0] >> ti[1] >> ti[2];
+						Tris.emplace_back(Triangle{ verts[ti[0] - 1], verts[ti[1] - 1] , verts[ti[2] - 1] });
+					}
+						//#endif
+				}
+			}
+		}
 	};
 
-	const Vector3& MatVecM(const Vector3& vec, const Matrix4& mat);
 	const Vector3& CrossProduct(const Vector3& a, const Vector3& b);
 	float DotProduct(const Vector3& a, const Vector3& b);
 
@@ -109,11 +191,13 @@ namespace TG
 		void SetCursorPosition(COORD pos);
 		void Clear();
 		void Draw(float elapsedTime);
-		void DrawLine(COORD startPoint, COORD endPoint, char fillChar = '*');
-		void DrawTriangle(Triangle tri, char fillChar = '@');
-		char PixelIllumination(const Vector3& lightDir, const Vector3& normal);
+		void DrawLine(COORD startPoint, COORD endPoint, const char fillChar[]);
+		void DrawTriangle(Triangle tri);
+		const char* PixelIllumination(const Vector3& lightDir, const Vector3& normal);
 
-		explicit Graphics(COORD screenSize)
+		Mesh Model;
+
+		explicit Graphics(COORD screenSize, int argc, char* argv[])
 		{
 			SetConsoleCP(CP_UTF8);
 			SetConsoleOutputCP(CP_UTF8);
@@ -123,8 +207,6 @@ namespace TG
 				throw std::exception("Invalid OUT handle value: " + GetLastError()); // todo: It will need to be improved
 			if (m_ConsoleInHandle == INVALID_HANDLE_VALUE)
 				throw std::exception("Invalid IN handle value: " + GetLastError()); // todo: It will need to be improved
-
-			//EnableVirtualTerminalProcessing();
 
 			m_DefaultCfi.cbSize = sizeof(CONSOLE_FONT_INFOEX);
 			m_DefaultCsbi.cbSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
@@ -143,27 +225,39 @@ namespace TG
 			m_ScreenHeight = screenSize.Y;
 			m_ScreenWidth = screenSize.X;
 
-			initscr(); // curses
-			//raw();
+			initscr(); // ncurses
+			curs_set(0);
+			cbreak();
+			noecho();
+			nodelay(stdscr, TRUE); // for non-blocking input with getch()
+			scrollok(stdscr, TRUE);
 
 			int row, col;
 			getmaxyx(stdscr, row, col);
+
+			if(argc > 1)
+			{
+				if(argc > 2) // with user's read mode
+				{
+					Model = Mesh{ argv[1], argv[2]};
+				}else // default read mode (old)
+				{
+					Model = Mesh{ argv[1] };
+				}
+			}else
+			{
+				std::cout << "not enough arguments";
+				Shutdown();
+				throw std::exception("not enough arguments");
+			}
+			
 		}
 
 		Graphics(const Graphics& other) = delete;
 
 		~Graphics()
 		{
-			endwin(); // curses
-
-			SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &m_DefaultCfi);
-			SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &m_DefaultCci);
-
-			ResetConsoleScreenSize();
-			ResetConsoleBuffSize();
-
-			SetConsoleCP(m_OldConsoleCp);
-			SetConsoleOutputCP(m_OldConsoleOutputCp);
+			Shutdown();
 		}
 
 	private:
@@ -195,9 +289,21 @@ namespace TG
 		void SetConsoleScreenSize(short cols, short rows);
 		void ResetConsoleScreenSize() const;
 
-		void EnableVirtualTerminalProcessing() const;
+		void Shutdown()
+		{
+			endwin(); // curses
 
-		CONSOLE_FONT_INFOEX CreateCFI(COORD fontSize = {12, 16}, const WCHAR* faceName = L"Consolas",
+			SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &m_DefaultCfi);
+			SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &m_DefaultCci);
+
+			ResetConsoleScreenSize();
+			ResetConsoleBuffSize();
+
+			SetConsoleCP(m_OldConsoleCp);
+			SetConsoleOutputCP(m_OldConsoleOutputCp);
+		}
+
+		CONSOLE_FONT_INFOEX CreateCFI(COORD fontSize = {8, 8}, const WCHAR* faceName = L"Raster",
 		                              UINT fFamily = FF_DONTCARE, UINT fWeight = FW_NORMAL)
 		{
 			CONSOLE_FONT_INFOEX cfi{};
